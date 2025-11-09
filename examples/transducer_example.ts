@@ -57,7 +57,7 @@ const transducer = new TransducerBuilder()
       kind: 'def',
       nameVar: 'fname',
       childPatterns: [
-        { type: 'VarPattern', varName: 'body' }
+        { type: 'ListPattern', restVar: 'children' }
       ]
     },
     template: {
@@ -65,7 +65,7 @@ const transducer = new TransducerBuilder()
       kind: 'function',
       name: { type: 'Var', varName: 'fname' },
       children: [
-        { type: 'VarTemplate', varName: 'body' }
+        { type: 'ListTemplate', listVar: 'children' }
       ]
     }
   })
