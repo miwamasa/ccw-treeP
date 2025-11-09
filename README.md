@@ -60,6 +60,23 @@ Transforms tree structures using declarative rules
 
 ## Usage
 
+### Using TreeP from TypeScript
+
+```typescript
+import { TreeP } from './src/index';
+
+const source = `
+def main() returns: Int {
+  println("Hello, TreeP!")
+  return 0
+}
+`;
+
+const treep = new TreeP(source);
+const result = treep.run();
+console.log('Result:', result);
+```
+
 ### Basic TreeP Program
 
 ```treep
@@ -168,7 +185,7 @@ def add(a, b) { return a + b }
 # Install dependencies
 npm install
 
-# Build
+# Build the project
 npm run build
 
 # Run tests
@@ -178,11 +195,32 @@ npm test
 npm run dev
 ```
 
+## Running TypeScript Examples
+
+To compile and run the TypeScript examples:
+
+```bash
+# Navigate to examples directory
+cd examples
+
+# Compile the examples
+npx tsc
+
+# Run basic usage example
+node dist/examples/basic_usage.js
+
+# Run transducer example
+node dist/examples/transducer_example.js
+```
+
+**Note**: The examples directory has its own `tsconfig.json` that extends the main project configuration. This ensures proper TypeScript compilation with ES2020 target support.
+
 ## Examples
 
 See the `examples/` directory for sample programs:
 - `basic.treep` - Basic functions and type inference
 - `macros.treep` - Using built-in macros
+- `basic_usage.ts` - Using TreeP from TypeScript
 - `transducer_example.ts` - Tree transformation with transducer
 
 ## License
