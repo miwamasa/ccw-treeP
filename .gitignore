@@ -2,3 +2,13 @@ node_modules/
 dist/
 *.log
 .DS_Store
+
+# Compiled files
+*.js
+*.d.ts
+*.d.ts.map
+*.js.map
+
+# But keep config files
+!*.config.js
+!jest.config.js
