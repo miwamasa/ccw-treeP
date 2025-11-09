@@ -59,7 +59,30 @@ export class Interpreter {
     });
 
     // Binary operators
-    this.addBinaryOp('+', (a, b) => ({ kind: 'Int', value: a.value + b.value }));
+    // Special handling for + to support both Int and String
+    this.globalEnv.set('+', {
+      kind: 'Builtin',
+      fn: (args: Value[]) => {
+        if (args.length !== 2) throw new Error('+ expects 2 arguments');
+        const a = args[0];
+        const b = args[1];
+
+        // String concatenation
+        if (a.kind === 'String' || b.kind === 'String') {
+          const aStr = a.kind === 'String' ? a.value : this.valueToString(a);
+          const bStr = b.kind === 'String' ? b.value : this.valueToString(b);
+          return { kind: 'String', value: aStr + bStr };
+        }
+
+        // Integer addition
+        if (a.kind === 'Int' && b.kind === 'Int') {
+          return { kind: 'Int', value: a.value + b.value };
+        }
+
+        throw new Error('+ expects Int or String arguments');
+      }
+    });
+
     this.addBinaryOp('-', (a, b) => ({ kind: 'Int', value: a.value - b.value }));
     this.addBinaryOp('*', (a, b) => ({ kind: 'Int', value: a.value * b.value }));
     this.addBinaryOp('/', (a, b) => ({ kind: 'Int', value: Math.floor(a.value / b.value) }));

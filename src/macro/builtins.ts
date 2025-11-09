@@ -57,15 +57,15 @@ export const builtinMacros: MacroDefinition[] = [
       const cond = args.get('cond')!;
       const body = args.get('body')!;
 
-      return makeIf(
-        cond,
-        {
-          kind: 'block',
-          children: [
-            makeCall('call', [body])
-          ]
-        }
-      );
+      // If body is a lambda, extract its block content
+      let thenBranch: Element;
+      if (body.kind === 'lambda' && body.children && body.children[0]) {
+        thenBranch = body.children[0];
+      } else {
+        thenBranch = { kind: 'block', children: [body] };
+      }
+
+      return makeIf(cond, thenBranch);
     }
   },
 
@@ -229,6 +229,14 @@ export const builtinMacros: MacroDefinition[] = [
       const x = args.get('x')!;
       const body = args.get('body')!;
 
+      // If body is a lambda, extract its block content
+      let thenBranch: Element;
+      if (body.kind === 'lambda' && body.children && body.children[0]) {
+        thenBranch = body.children[0];
+      } else {
+        thenBranch = { kind: 'block', children: [body] };
+      }
+
       return makeIf(
         makeCall('==', [
           x,
@@ -240,10 +248,7 @@ export const builtinMacros: MacroDefinition[] = [
             ]
           }
         ]),
-        {
-          kind: 'block',
-          children: [makeCall('call', [body])]
-        }
+        thenBranch
       );
     }
   },
@@ -256,6 +261,14 @@ export const builtinMacros: MacroDefinition[] = [
       const x = args.get('x')!;
       const body = args.get('body')!;
 
+      // If body is a lambda, extract its block content
+      let thenBranch: Element;
+      if (body.kind === 'lambda' && body.children && body.children[0]) {
+        thenBranch = body.children[0];
+      } else {
+        thenBranch = { kind: 'block', children: [body] };
+      }
+
       return makeIf(
         makeCall('>', [
           x,
@@ -267,10 +280,7 @@ export const builtinMacros: MacroDefinition[] = [
             ]
           }
         ]),
-        {
-          kind: 'block',
-          children: [makeCall('call', [body])]
-        }
+        thenBranch
       );
     }
   },
@@ -283,6 +293,14 @@ export const builtinMacros: MacroDefinition[] = [
       const cond = args.get('cond')!;
       const body = args.get('body')!;
 
+      // If body is a lambda, extract its block content
+      let bodyBlock: Element;
+      if (body.kind === 'lambda' && body.children && body.children[0]) {
+        bodyBlock = body.children[0];
+      } else {
+        bodyBlock = { kind: 'block', children: [body] };
+      }
+
       return {
         kind: 'while',
         children: [
@@ -290,10 +308,7 @@ export const builtinMacros: MacroDefinition[] = [
             kind: 'condition',
             children: [makeCall('unary_!', [cond])]
           },
-          {
-            kind: 'block',
-            children: [makeCall('call', [body])]
-          }
+          bodyBlock
         ]
       };
     }
