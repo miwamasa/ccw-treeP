@@ -69,4 +69,5 @@ export { TypeInference } from './type/inference';
 export { Interpreter } from './interpreter/interpreter';
 export { Transducer, TransducerBuilder } from './transducer/transducer';
 export * from './transducer/types';
+export * from './transducer/helpers';
 export * from './ast/types';

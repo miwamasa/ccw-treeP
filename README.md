@@ -55,8 +55,15 @@ Implements Hindley-Milner type inference algorithm
 ### 6. Interpreter
 Executes the EAST representation
 
-### 7. Transducer
-Transforms tree structures using declarative rules
+### 7. Transducer (Macro Tree Transducer)
+Transforms tree structures using declarative rules with macro-like pattern matching
+
+Features:
+- Declarative pattern matching with conditions
+- Template-based code generation
+- Multi-pass transformation pipelines
+- AST optimization and rewriting
+- Fixpoint iteration for recursive transformations
 
 ## Usage
 
@@ -107,28 +114,80 @@ def main() returns: Int {
 }
 ```
 
-### Tree Transformation with Transducer
+### Tree Transformation with Macro Tree Transducer
 
 ```typescript
-import { TransducerBuilder } from './transducer/transducer';
+import { TransducerBuilder, TransformRuleBuilder } from './src/index';
 
+// Example 1: Basic transformation
 const transducer = new TransducerBuilder()
   .addRule({
     name: 'rename_def_to_function',
     pattern: {
       type: 'KindPattern',
       kind: 'def',
-      nameVar: 'fname'
+      nameVar: 'fname',
+      childPatterns: [
+        { type: 'ListPattern', restVar: 'children' }
+      ]
     },
     template: {
       type: 'NodeTemplate',
       kind: 'function',
-      name: { type: 'Var', varName: 'fname' }
+      name: { type: 'Var', varName: 'fname' },
+      children: [
+        { type: 'ListTemplate', listVar: 'children' }
+      ]
     }
   })
   .build('transformer');
 
 const outputTree = transducer.transform(inputTree);
+
+// Example 2: Using DSL for cleaner syntax
+import { TransformRuleBuilder, isLiteral } from './src/index';
+
+const optimizer = new TransducerBuilder()
+  // x + 0 => x
+  .addRule(
+    new TransformRuleBuilder()
+      .setName('add_zero')
+      .matchBinaryOp('+')
+      .when(bindings => isLiteral(bindings.get('right') as Element, '0'))
+      .generateVar('left')
+      .build()
+  )
+  // x * 1 => x
+  .addRule(
+    new TransformRuleBuilder()
+      .setName('mul_one')
+      .matchBinaryOp('*')
+      .when(bindings => isLiteral(bindings.get('right') as Element, '1'))
+      .generateVar('left')
+      .build()
+  )
+  .build('optimizer');
+
+// Example 3: Fixpoint iteration for nested optimizations
+class FixpointTransducer {
+  constructor(private transducer: any, private maxIterations: number = 10) {}
+
+  transform(tree: Element): Element {
+    let current = tree;
+    for (let i = 0; i < this.maxIterations; i++) {
+      const next = this.transducer.transform(current);
+      if (JSON.stringify(next) === JSON.stringify(current)) {
+        return current; // Reached fixpoint
+      }
+      current = next;
+    }
+    return current;
+  }
+}
+
+const fixpointOptimizer = new FixpointTransducer(optimizer);
+// ((x + 0) * 1) + 0 => x (after 2 iterations)
+const result = fixpointOptimizer.transform(complexTree);
 ```
 
 ## EAST Format
@@ -218,10 +277,12 @@ node dist/examples/transducer_example.js
 ## Examples
 
 See the `examples/` directory for sample programs:
-- `basic.treep` - Basic functions and type inference
-- `macros.treep` - Using built-in macros
-- `basic_usage.ts` - Using TreeP from TypeScript
-- `transducer_example.ts` - Tree transformation with transducer
+- `basic.treep` - Basic TreeP programs with functions and type inference
+- `macros.treep` - Using built-in macros (when, debug, etc.)
+- `basic_usage.ts` - Using TreeP from TypeScript (Hello World, functions, macros)
+- `transducer_example.ts` - Basic tree transformation (def → function, param → argument)
+- `macro_tree_transducer.ts` - Advanced transformations (AST optimization, rewriting, pipelines)
+- `advanced_transducer.ts` - DSL-based rules, fixpoint iteration, constant folding
 
 ## License
 
