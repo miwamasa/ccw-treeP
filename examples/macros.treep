@@ -1,0 +1,30 @@
+// TreeP Example: Using built-in macros
+
+def main() returns: Int {
+  let x = 10
+
+  // when macro: if without else
+  when(x > 0) {
+    println("x is positive")
+  }
+
+  // ifPositive macro
+  ifPositive(x) {
+    println("x is positive (using macro)")
+  }
+
+  // debug macro
+  debug(x)
+
+  // log macro
+  log("Starting loop")
+
+  // until macro
+  let i = 0
+  until(i >= 5) {
+    println(i)
+    i = i + 1
+  }
+
+  return 0
+}

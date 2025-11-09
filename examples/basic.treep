@@ -1,0 +1,23 @@
+// TreeP Example: Basic functions with type inference
+
+def add(x, y) {
+  return x + y
+}
+
+def factorial(n) {
+  if (n <= 1) {
+    return 1
+  } else {
+    return n * factorial(n - 1)
+  }
+}
+
+def main() returns: Int {
+  let result = add(10, 20)
+  println(result)
+
+  let fact5 = factorial(5)
+  println(fact5)
+
+  return 0
+}
