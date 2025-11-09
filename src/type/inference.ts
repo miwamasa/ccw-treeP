@@ -205,6 +205,26 @@ export class TypeInference {
     const name = elem.name!;
     const args = elem.children || [];
 
+    // Special handling for + operator to support both Int and String
+    if (name === '+' && args.length === 2) {
+      const arg1Type = this.inferElement(args[0], env);
+      const arg2Type = this.inferElement(args[1], env);
+
+      // If either argument is String, the result is String
+      const arg1Resolved = this.apply(arg1Type);
+      const arg2Resolved = this.apply(arg2Type);
+
+      if ((arg1Resolved.kind === 'TypeCon' && arg1Resolved.name === 'String') ||
+          (arg2Resolved.kind === 'TypeCon' && arg2Resolved.name === 'String')) {
+        return { kind: 'TypeCon', name: 'String' };
+      }
+
+      // Otherwise, both must be Int
+      this.unify(arg1Type, { kind: 'TypeCon', name: 'Int' });
+      this.unify(arg2Type, { kind: 'TypeCon', name: 'Int' });
+      return { kind: 'TypeCon', name: 'Int' };
+    }
+
     // Get function type
     const funScheme = env.get(name);
     if (!funScheme) {
