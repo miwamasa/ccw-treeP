@@ -17,7 +17,7 @@ export type Pattern =
   | { type: 'KindPattern'; kind: string; nameVar?: string; attrPatterns?: AttrPattern[]; childPatterns?: Pattern[] }
   | { type: 'VarPattern'; varName: string }
   | { type: 'AnyPattern' }
-  | { type: 'ListPattern'; patterns: Pattern[]; restVar?: string };
+  | { type: 'ListPattern'; patterns?: Pattern[]; restVar?: string };
 
 export interface AttrPattern {
   key: string;
@@ -32,7 +32,7 @@ export type Template =
   | { type: 'NodeTemplate'; kind: string; name?: TemplateExpr; attrs?: AttrTemplate[]; children?: Template[] }
   | { type: 'VarTemplate'; varName: string }
   | { type: 'LiteralTemplate'; value: string }
-  | { type: 'ListTemplate'; templates: Template[] };
+  | { type: 'ListTemplate'; templates?: Template[]; listVar?: string };
 
 export interface AttrTemplate {
   key: string;

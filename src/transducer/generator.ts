@@ -97,16 +97,31 @@ export class TemplateGenerator {
     };
   }
 
-  private generateList(template: { type: 'ListTemplate'; templates: Template[] }, bindings: Bindings): Element[] {
+  private generateList(template: { type: 'ListTemplate'; templates?: Template[]; listVar?: string }, bindings: Bindings): Element[] {
     const result: Element[] = [];
 
-    for (const t of template.templates) {
-      const generated = this.generate(t, bindings);
+    // If listVar is specified, get the list from bindings
+    if (template.listVar) {
+      const value = bindings.get(template.listVar);
+      if (value === undefined) {
+        throw new Error(`Unbound list variable: ${template.listVar}`);
+      }
+      if (!Array.isArray(value)) {
+        throw new Error(`Variable ${template.listVar} is not a list`);
+      }
+      return value as Element[];
+    }
 
-      if (Array.isArray(generated)) {
-        result.push(...generated);
-      } else {
-        result.push(generated);
+    // Otherwise, use templates
+    if (template.templates) {
+      for (const t of template.templates) {
+        const generated = this.generate(t, bindings);
+
+        if (Array.isArray(generated)) {
+          result.push(...generated);
+        } else {
+          result.push(generated);
+        }
       }
     }
 

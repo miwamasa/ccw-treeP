@@ -66,6 +66,29 @@ export class PatternMatcher {
     if (pattern.childPatterns) {
       const children = element.children || [];
 
+      // If the last child pattern is a ListPattern with restVar, handle it specially
+      const lastPattern = pattern.childPatterns[pattern.childPatterns.length - 1];
+      if (lastPattern.type === 'ListPattern' && lastPattern.restVar) {
+        // Match fixed patterns first
+        const fixedPatterns = pattern.childPatterns.slice(0, -1);
+
+        if (children.length < fixedPatterns.length) {
+          return false;
+        }
+
+        for (let i = 0; i < fixedPatterns.length; i++) {
+          if (!this.matchPattern(fixedPatterns[i], children[i], bindings)) {
+            return false;
+          }
+        }
+
+        // Bind rest to remaining elements
+        const rest = children.slice(fixedPatterns.length);
+        bindings.set(lastPattern.restVar, rest);
+        return true;
+      }
+
+      // Otherwise, exact match required
       if (children.length !== pattern.childPatterns.length) {
         return false;
       }
@@ -122,16 +145,21 @@ export class PatternMatcher {
     // Check for rest pattern (ListPattern with restVar)
     const lastPattern = patterns[patterns.length - 1];
     if (lastPattern.type === 'ListPattern' && lastPattern.restVar) {
-      // Match fixed patterns first
-      for (let i = 0; i < patterns.length - 1; i++) {
-        if (i >= elements.length) return false;
-        if (!this.matchPattern(patterns[i], elements[i], bindings)) {
+      // Match fixed patterns from lastPattern.patterns first (if any)
+      const fixedPatterns = lastPattern.patterns || [];
+
+      if (elements.length < fixedPatterns.length) {
+        return false;
+      }
+
+      for (let i = 0; i < fixedPatterns.length; i++) {
+        if (!this.matchPattern(fixedPatterns[i], elements[i], bindings)) {
           return false;
         }
       }
 
       // Bind rest to remaining elements
-      const rest = elements.slice(patterns.length - 1);
+      const rest = elements.slice(fixedPatterns.length);
       bindings.set(lastPattern.restVar, rest);
       return true;
     }
