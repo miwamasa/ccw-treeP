@@ -136,12 +136,27 @@ export class Interpreter {
   execute(elements: Element[]): Value {
     let result: Value = { kind: 'Unit' };
 
+    // First, evaluate all top-level elements (function definitions, etc.)
     for (const elem of elements) {
       result = this.eval(elem, this.globalEnv);
       if (this.returnValue) {
         const ret = this.returnValue;
         this.returnValue = null;
         return ret;
+      }
+    }
+
+    // If a main function exists, call it automatically
+    const mainFunc = this.globalEnv.get('main');
+    if (mainFunc && mainFunc.kind === 'Function') {
+      // Call main with no arguments
+      const newEnv = new Map(mainFunc.env);
+      result = this.eval(mainFunc.body, newEnv);
+
+      // If main returned via return statement, use that value
+      if (this.returnValue) {
+        result = this.returnValue;
+        this.returnValue = null;
       }
     }
 
@@ -252,7 +267,17 @@ export class Interpreter {
         newEnv.set(param, args[i]);
       });
 
-      return this.eval(func.body, newEnv);
+      const result = this.eval(func.body, newEnv);
+
+      // If the function returned via return statement, clear returnValue
+      // and return the result (the return value is propagated up)
+      if (this.returnValue) {
+        const returnedValue = this.returnValue;
+        this.returnValue = null;
+        return returnedValue;
+      }
+
+      return result;
     }
 
     throw new Error(`${name} is not a function`);
