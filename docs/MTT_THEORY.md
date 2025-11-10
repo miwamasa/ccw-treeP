@@ -497,6 +497,214 @@ const result = flattenMTT.transform(testTree, { kind: 'nil' });
 console.log(JSON.stringify(result, null, 2));
 ```
 
+## 例3: 家系図変換（マルチステートMTT）
+
+この例は、複数の状態（q0, q, qid）を持つMTTの典型例です。家系図の構造を、性別タグ付きのメンバーリストに変換し、姓を継承させます。
+
+### 入力木
+
+```
+Family(
+  lastName(March),
+  m-list(
+    father(Jim),
+    m-list(
+      mother(Cindy),
+      m-list(
+        daughter(Brenda),
+        e
+      )
+    )
+  )
+)
+```
+
+### MTTルール
+
+```
+<q0, Family>        -> <q, x2>( <q, x1> )
+<q, m-list>(y)      -> o( <q, x1>(y), <q, x2>(y) )
+<q, father>(y)      -> Male( <qid, x1>, y )
+<q, mother>(y)      -> Female( <qid, x1>, y )
+<q, son>(y)         -> Male( <qid, x1>, y )
+<q, daughter>(y)    -> Female( <qid, x1>, y )
+<q, e>(y)           -> e
+<qid, identifier>   -> identifier_value
+```
+
+### 状態の説明
+
+- **q0**: 初期状態。Familyノードを処理し、lastNameを抽出してメンバーリスト処理を開始
+- **q**: メインの変換状態。パラメータyとして姓を受け取り、各メンバーに伝播
+- **qid**: 識別子抽出状態。名前（identifier）の値を取得
+
+### 実行トレース
+
+```
+ステップ1: <q0, Family(lastName(March), m-list(...))>
+  → x1 = lastName(March), x2 = m-list(...)
+  → <q, m-list(...)>( <qid, identifier(March)> )
+  → 姓を抽出: March
+  → <q, m-list(...)>(March)
+
+ステップ2: <q, m-list(father(Jim), m-list(...))>(March)
+  → x1 = father(Jim), x2 = m-list(...)
+  → o( <q, father(Jim)>(March), <q, m-list(...)>(March) )
+
+ステップ3: <q, father(Jim)>(March)
+  → x1 = identifier(Jim)
+  → Male( <qid, identifier(Jim)>, March )
+  → Male( Jim, March )
+
+ステップ4: <q, m-list(mother(Cindy), m-list(...))>(March)
+  → x1 = mother(Cindy), x2 = m-list(...)
+  → o( <q, mother(Cindy)>(March), <q, m-list(...)>(March) )
+
+ステップ5: <q, mother(Cindy)>(March)
+  → x1 = identifier(Cindy)
+  → Female( <qid, identifier(Cindy)>, March )
+  → Female( Cindy, March )
+
+ステップ6: <q, m-list(daughter(Brenda), e)>(March)
+  → x1 = daughter(Brenda), x2 = e
+  → o( <q, daughter(Brenda)>(March), <q, e>(March) )
+
+ステップ7: <q, daughter(Brenda)>(March)
+  → x1 = identifier(Brenda)
+  → Female( <qid, identifier(Brenda)>, March )
+  → Female( Brenda, March )
+
+ステップ8: <q, e>(March)
+  → e
+
+最終結果:
+o(
+  Male(March, Jim),
+  o(
+    Female(March, Cindy),
+    o(
+      Female(March, Brenda),
+      e
+    )
+  )
+)
+```
+
+### 出力木
+
+```
+o(
+  Male(March, Jim),
+  o(
+    Female(March, Cindy),
+    o(
+      Female(March, Brenda),
+      e
+    )
+  )
+)
+```
+
+### TreePでの実装
+
+```typescript
+class StatefulMTT {
+  private rules: Map<string, Map<string, (elem: Element, params: any[]) => Element>>;
+
+  addRule(state: string, kind: string, handler: (elem: Element, params: any[]) => Element): this {
+    if (!this.rules.has(state)) {
+      this.rules.set(state, new Map());
+    }
+    this.rules.get(state)!.set(kind, handler);
+    return this;
+  }
+
+  transform(state: string, elem: Element, ...params: any[]): Element {
+    const stateRules = this.rules.get(state);
+    if (!stateRules) {
+      throw new Error(`No rules defined for state: ${state}`);
+    }
+    const handler = stateRules.get(elem.kind);
+    if (!handler) {
+      throw new Error(`No rule defined for state '${state}' and kind '${elem.kind}'`);
+    }
+    return handler(elem, params);
+  }
+}
+
+// ルールの定義
+const familyMTT = new StatefulMTT();
+
+// <q0, Family> -> <q, x2>( <q, x1> )
+familyMTT.addRule('q0', 'Family', (elem, params) => {
+  const [lastNameNode, memberListNode] = elem.children!;
+  const lastName = familyMTT.transform('qid', lastNameNode.children![0]);
+  return familyMTT.transform('q', memberListNode, lastName.name);
+});
+
+// <q, m-list>(y) -> o( <q, x1>(y), <q, x2>(y) )
+familyMTT.addRule('q', 'm-list', (elem, params) => {
+  const [lastName] = params as [string];
+  return {
+    kind: 'o',
+    children: [
+      familyMTT.transform('q', elem.children![0], lastName),
+      familyMTT.transform('q', elem.children![1], lastName)
+    ]
+  };
+});
+
+// <q, father>(y) -> Male( <qid, x1>, y )
+familyMTT.addRule('q', 'father', (elem, params) => {
+  const [lastName] = params as [string];
+  const firstName = familyMTT.transform('qid', elem.children![0]);
+  return {
+    kind: 'Male',
+    children: [
+      { kind: 'identifier', name: lastName },
+      firstName
+    ]
+  };
+});
+
+// mother, son, daughter も同様に定義...
+
+// <q, e>(y) -> e
+familyMTT.addRule('q', 'e', (elem, params) => {
+  return { kind: 'e' };
+});
+
+// <qid, identifier> -> identifier_value
+familyMTT.addRule('qid', 'identifier', (elem, params) => {
+  return { kind: 'identifier', name: elem.name };
+});
+
+// 変換実行
+const output = familyMTT.transform('q0', inputTree);
+```
+
+### この例の特徴
+
+1. **マルチステート**: q0（初期）、q（メイン）、qid（識別子抽出）の3つの状態を使用
+2. **パラメータ継承**: 姓（lastName）をパラメータyとして全メンバーに伝播
+3. **性別によるタグ付け**: father/sonはMale、mother/daughterはFemaleに変換
+4. **再帰的リスト処理**: m-listは左右の子に同じパラメータを渡して再帰的に処理
+5. **状態遷移**:
+   - q0 → qid (姓抽出)
+   - q0 → q (メンバーリスト処理)
+   - q → qid (名前抽出)
+   - q → q (再帰的処理)
+
+### 応用可能性
+
+このパターンは以下のような場面で応用できます：
+
+- **スコープ情報の伝播**: 変数のスコープやコンテキストを子ノードに渡す
+- **型情報の継承**: 型情報をパラメータとして伝播
+- **累積計算**: カウンタや集約値を引き継ぐ
+- **名前空間管理**: モジュール名やパッケージ名を継承
+- **環境情報**: 設定や環境変数を子ノードに伝える
+
 ## MTTの応用
 
 ### 1. 構文木の属性計算
