@@ -2,6 +2,12 @@
 
 TreeP is a functional programming language with Hindley-Milner type inference and a powerful macro system based on Element AST (EAST). It also includes a declarative tree transformation system (transducer) for converting one tree structure to another.
 
+## Documentation
+
+- **[Macro Tree Transducer Guide](docs/MACRO_TREE_TRANSDUCER.md)** - Comprehensive guide to the integrated macro and transducer system
+- **[Transducer Tutorial](docs/TRANSDUCER_TUTORIAL.md)** - Step-by-step tutorial with practical examples
+- **[Architecture Design](docs/ARCHITECTURE.md)** - System architecture and design patterns
+
 ## Features
 
 - **Hindley-Milner Type Inference**: Automatic type inference without explicit type annotations
