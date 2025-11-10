@@ -47,6 +47,53 @@ class SimpleMTT {
   }
 }
 
+/**
+ * Stateful MTT Implementation
+ *
+ * A Macro Tree Transducer with multiple states and parameter-passing.
+ * Rules are defined by (state, kind) pairs, allowing different transformations
+ * based on the current state.
+ */
+class StatefulMTT {
+  private rules: Map<string, Map<string, (elem: Element, params: any[]) => Element>>;
+
+  constructor() {
+    this.rules = new Map();
+  }
+
+  /**
+   * Add a transformation rule for a specific state and element kind
+   * @param state The state (e.g., 'q0', 'q', 'qid')
+   * @param kind The element kind to match
+   * @param handler Function that takes (element, ...params) and returns transformed element
+   */
+  addRule(state: string, kind: string, handler: (elem: Element, params: any[]) => Element): this {
+    if (!this.rules.has(state)) {
+      this.rules.set(state, new Map());
+    }
+    this.rules.get(state)!.set(kind, handler);
+    return this;
+  }
+
+  /**
+   * Transform an element using the defined rules for a specific state
+   * @param state The current state
+   * @param elem The element to transform
+   * @param params Additional parameters for the transformation
+   */
+  transform(state: string, elem: Element, ...params: any[]): Element {
+    const stateRules = this.rules.get(state);
+    if (!stateRules) {
+      throw new Error(`No rules defined for state: ${state}`);
+    }
+    const handler = stateRules.get(elem.kind);
+    if (!handler) {
+      throw new Error(`No rule defined for state '${state}' and kind '${elem.kind}'`);
+    }
+    return handler(elem, params);
+  }
+}
+
 // =============================================================================
 // Example 1: Copy Transducer (No Parameters)
 // =============================================================================
@@ -523,6 +570,271 @@ function example5_treep_integration() {
 }
 
 // =============================================================================
+// Example 6: Family Tree Transformation with Multiple States
+// =============================================================================
+
+/**
+ * Transform a family tree structure using multi-state MTT
+ *
+ * This example demonstrates a classic MTT with multiple states (q0, q, qid)
+ * that transforms a family tree into a flat list of family members with
+ * gender tags and inherited last names.
+ *
+ * Rules:
+ *   <q0, Family>        -> <q, x2>( <q, x1> )
+ *   <q, m-list>(y)      -> o( <q, x1>(y), <q, x2>(y) )
+ *   <q, father>(y)      -> Male( <qid, x1>, y )
+ *   <q, mother>(y)      -> Female( <qid, x1>, y )
+ *   <q, son>(y)         -> Male( <qid, x1>, y )
+ *   <q, daughter>(y)    -> Female( <qid, x1>, y )
+ *   <q, lastName>       -> ( <qid, x1> )
+ *   <q, e>(y)           -> e
+ *   <qid, identifier>   -> identifier_value
+ *
+ * Input:
+ *   Family(
+ *     lastName(March),
+ *     m-list(
+ *       father(Jim),
+ *       m-list(
+ *         mother(Cindy),
+ *         m-list(
+ *           daughter(Brenda),
+ *           e
+ *         )
+ *       )
+ *     )
+ *   )
+ *
+ * Output:
+ *   o(
+ *     Male(March, Jim),
+ *     o(
+ *       Female(March, Cindy),
+ *       o(
+ *         Female(March, Brenda),
+ *         e
+ *       )
+ *     )
+ *   )
+ */
+function example6_family_tree() {
+  console.log('\n=== Example 6: Family Tree with Multi-State MTT ===\n');
+
+  const familyMTT = new StatefulMTT();
+
+  // Rule: <q0, Family> -> <q, x2>( <q, x1> )
+  // Start state: Process family by first extracting lastName, then processing member list
+  familyMTT.addRule('q0', 'Family', (elem, params) => {
+    const children = elem.children || [];
+    if (children.length !== 2) {
+      throw new Error('Family must have exactly 2 children: lastName and m-list');
+    }
+
+    const [lastNameNode, memberListNode] = children;
+
+    // Extract the last name using qid state
+    const lastName = familyMTT.transform('qid', lastNameNode.children![0]);
+
+    // Process the member list with lastName as parameter
+    return familyMTT.transform('q', memberListNode, lastName.name);
+  });
+
+  // Rule: <q, m-list>(y) -> o( <q, x1>(y), <q, x2>(y) )
+  // Process member list: apply transformation to both children with inherited lastName
+  familyMTT.addRule('q', 'm-list', (elem, params) => {
+    const children = elem.children || [];
+    const [lastName] = params as [string];
+
+    if (children.length !== 2) {
+      throw new Error('m-list must have exactly 2 children');
+    }
+
+    return {
+      kind: 'o',
+      children: [
+        familyMTT.transform('q', children[0], lastName),
+        familyMTT.transform('q', children[1], lastName)
+      ]
+    };
+  });
+
+  // Rule: <q, father>(y) -> Male( <qid, x1>, y )
+  familyMTT.addRule('q', 'father', (elem, params) => {
+    const children = elem.children || [];
+    const [lastName] = params as [string];
+
+    const firstName = familyMTT.transform('qid', children[0]);
+
+    return {
+      kind: 'Male',
+      children: [
+        { kind: 'identifier', name: lastName },
+        firstName
+      ]
+    };
+  });
+
+  // Rule: <q, mother>(y) -> Female( <qid, x1>, y )
+  familyMTT.addRule('q', 'mother', (elem, params) => {
+    const children = elem.children || [];
+    const [lastName] = params as [string];
+
+    const firstName = familyMTT.transform('qid', children[0]);
+
+    return {
+      kind: 'Female',
+      children: [
+        { kind: 'identifier', name: lastName },
+        firstName
+      ]
+    };
+  });
+
+  // Rule: <q, son>(y) -> Male( <qid, x1>, y )
+  familyMTT.addRule('q', 'son', (elem, params) => {
+    const children = elem.children || [];
+    const [lastName] = params as [string];
+
+    const firstName = familyMTT.transform('qid', children[0]);
+
+    return {
+      kind: 'Male',
+      children: [
+        { kind: 'identifier', name: lastName },
+        firstName
+      ]
+    };
+  });
+
+  // Rule: <q, daughter>(y) -> Female( <qid, x1>, y )
+  familyMTT.addRule('q', 'daughter', (elem, params) => {
+    const children = elem.children || [];
+    const [lastName] = params as [string];
+
+    const firstName = familyMTT.transform('qid', children[0]);
+
+    return {
+      kind: 'Female',
+      children: [
+        { kind: 'identifier', name: lastName },
+        firstName
+      ]
+    };
+  });
+
+  // Rule: <q, e>(y) -> e
+  familyMTT.addRule('q', 'e', (elem, params) => {
+    return { kind: 'e' };
+  });
+
+  // Rule: <qid, identifier> -> identifier_value
+  // Extract identifier value (firstName or lastName)
+  familyMTT.addRule('qid', 'identifier', (elem, params) => {
+    return {
+      kind: 'identifier',
+      name: elem.name
+    };
+  });
+
+  // Input tree: Family(lastName(March), m-list(father(Jim), m-list(mother(Cindy), m-list(daughter(Brenda), e))))
+  const input: Element = {
+    kind: 'Family',
+    children: [
+      {
+        kind: 'lastName',
+        children: [
+          { kind: 'identifier', name: 'March' }
+        ]
+      },
+      {
+        kind: 'm-list',
+        children: [
+          {
+            kind: 'father',
+            children: [
+              { kind: 'identifier', name: 'Jim' }
+            ]
+          },
+          {
+            kind: 'm-list',
+            children: [
+              {
+                kind: 'mother',
+                children: [
+                  { kind: 'identifier', name: 'Cindy' }
+                ]
+              },
+              {
+                kind: 'm-list',
+                children: [
+                  {
+                    kind: 'daughter',
+                    children: [
+                      { kind: 'identifier', name: 'Brenda' }
+                    ]
+                  },
+                  { kind: 'e' }
+                ]
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  };
+
+  console.log('Input (Family Tree):');
+  console.log('Family(');
+  console.log('  lastName(March),');
+  console.log('  m-list(');
+  console.log('    father(Jim),');
+  console.log('    m-list(');
+  console.log('      mother(Cindy),');
+  console.log('      m-list(');
+  console.log('        daughter(Brenda),');
+  console.log('        e');
+  console.log('      )');
+  console.log('    )');
+  console.log('  )');
+  console.log(')');
+
+  console.log('\nMTT Rules:');
+  console.log('<q0, Family>        -> <q, x2>( <q, x1> )');
+  console.log('<q, m-list>(y)      -> o( <q, x1>(y), <q, x2>(y) )');
+  console.log('<q, father>(y)      -> Male( <qid, x1>, y )');
+  console.log('<q, mother>(y)      -> Female( <qid, x1>, y )');
+  console.log('<q, son>(y)         -> Male( <qid, x1>, y )');
+  console.log('<q, daughter>(y)    -> Female( <qid, x1>, y )');
+  console.log('<q, e>(y)           -> e');
+  console.log('<qid, identifier>   -> identifier_value');
+
+  // Transform starting from q0 state
+  const output = familyMTT.transform('q0', input);
+
+  console.log('\nOutput (Gender-tagged member list with inherited lastName):');
+  console.log(JSON.stringify(output, null, 2));
+
+  console.log('\nExpected structure:');
+  console.log('o(');
+  console.log('  Male(March, Jim),');
+  console.log('  o(');
+  console.log('    Female(March, Cindy),');
+  console.log('    o(');
+  console.log('      Female(March, Brenda),');
+  console.log('      e');
+  console.log('    )');
+  console.log('  )');
+  console.log(')');
+
+  console.log('\nNote: This demonstrates a multi-state MTT where:');
+  console.log('- q0: Initial state for processing Family node');
+  console.log('- q: Main state for processing members with lastName parameter');
+  console.log('- qid: Identifier extraction state');
+  console.log('- lastName is inherited through parameter y to all family members');
+}
+
+// =============================================================================
 // Main: Run all examples
 // =============================================================================
 
@@ -536,5 +848,6 @@ example2_flatten();
 example3_depth();
 example4_path();
 example5_treep_integration();
+example6_family_tree();
 
 console.log('\n✓ All MTT examples completed successfully!\n');
