@@ -667,7 +667,44 @@ familyMTT.addRule('q', 'father', (elem, params) => {
   };
 });
 
-// mother, son, daughter も同様に定義...
+// <q, mother>(y) -> Female( <qid, x1>, y )
+familyMTT.addRule('q', 'mother', (elem, params) => {
+  const [lastName] = params as [string];
+  const firstName = familyMTT.transform('qid', elem.children![0]);
+  return {
+    kind: 'Female',
+    children: [
+      { kind: 'identifier', name: lastName },
+      firstName
+    ]
+  };
+});
+
+// <q, son>(y) -> Male( <qid, x1>, y )
+familyMTT.addRule('q', 'son', (elem, params) => {
+  const [lastName] = params as [string];
+  const firstName = familyMTT.transform('qid', elem.children![0]);
+  return {
+    kind: 'Male',
+    children: [
+      { kind: 'identifier', name: lastName },
+      firstName
+    ]
+  };
+});
+
+// <q, daughter>(y) -> Female( <qid, x1>, y )
+familyMTT.addRule('q', 'daughter', (elem, params) => {
+  const [lastName] = params as [string];
+  const firstName = familyMTT.transform('qid', elem.children![0]);
+  return {
+    kind: 'Female',
+    children: [
+      { kind: 'identifier', name: lastName },
+      firstName
+    ]
+  };
+});
 
 // <q, e>(y) -> e
 familyMTT.addRule('q', 'e', (elem, params) => {
@@ -679,8 +716,56 @@ familyMTT.addRule('qid', 'identifier', (elem, params) => {
   return { kind: 'identifier', name: elem.name };
 });
 
+// 入力木の定義
+const inputTree: Element = {
+  kind: 'Family',
+  children: [
+    {
+      kind: 'lastName',
+      children: [
+        { kind: 'identifier', name: 'March' }
+      ]
+    },
+    {
+      kind: 'm-list',
+      children: [
+        {
+          kind: 'father',
+          children: [
+            { kind: 'identifier', name: 'Jim' }
+          ]
+        },
+        {
+          kind: 'm-list',
+          children: [
+            {
+              kind: 'mother',
+              children: [
+                { kind: 'identifier', name: 'Cindy' }
+              ]
+            },
+            {
+              kind: 'm-list',
+              children: [
+                {
+                  kind: 'daughter',
+                  children: [
+                    { kind: 'identifier', name: 'Brenda' }
+                  ]
+                },
+                { kind: 'e' }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+};
+
 // 変換実行
 const output = familyMTT.transform('q0', inputTree);
+console.log(JSON.stringify(output, null, 2));
 ```
 
 ### この例の特徴
