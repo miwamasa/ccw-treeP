@@ -136,6 +136,85 @@ function tree(literal: string): Element {
 }
 
 // =============================================================================
+// Tree Pretty Printer - Convert EAST to Syntax Sugar Format
+// =============================================================================
+
+/**
+ * Convert Element (EAST) back to tree literal syntax sugar format
+ *
+ * Examples:
+ *   { kind: 'e' } => "e"
+ *   { kind: 'a', children: [...] } => "a(...)"
+ *   { kind: 'identifier', name: 'March' } => "March"
+ */
+function prettyPrintTree(elem: Element, indent: number = 0): string {
+  // Handle identifier nodes - just print the name
+  if (elem.kind === 'identifier' && elem.name) {
+    return elem.name;
+  }
+
+  // Handle leaf nodes (no children)
+  if (!elem.children || elem.children.length === 0) {
+    return elem.kind;
+  }
+
+  // Handle nodes with children
+  const indentStr = '  '.repeat(indent);
+  const childIndentStr = '  '.repeat(indent + 1);
+
+  // Format children
+  const formattedChildren = elem.children.map(child => {
+    const childStr = prettyPrintTree(child, indent + 1);
+
+    // If child is simple (no newlines), keep on same line
+    if (!childStr.includes('\n')) {
+      return childStr;
+    }
+
+    // Otherwise, indent child
+    return '\n' + childIndentStr + childStr;
+  });
+
+  // Determine if we should format on single line or multiple lines
+  const joinedChildren = formattedChildren.join(', ');
+  const singleLine = `${elem.kind}(${joinedChildren})`;
+
+  // Use single line if total length is reasonable and no child has newlines
+  if (singleLine.length < 60 && !formattedChildren.some(c => c.includes('\n'))) {
+    return singleLine;
+  }
+
+  // Multi-line format
+  const childrenStr = formattedChildren
+    .map(c => c.startsWith('\n') ? c.substring(1) : childIndentStr + c)
+    .join(',\n');
+
+  return `${elem.kind}(\n${childrenStr}\n${indentStr})`;
+}
+
+/**
+ * Compact version - single line output
+ */
+function prettyPrintTreeCompact(elem: Element): string {
+  // Handle identifier nodes
+  if (elem.kind === 'identifier' && elem.name) {
+    return elem.name;
+  }
+
+  // Handle leaf nodes
+  if (!elem.children || elem.children.length === 0) {
+    return elem.kind;
+  }
+
+  // Handle nodes with children
+  const childrenStr = elem.children
+    .map(child => prettyPrintTreeCompact(child))
+    .join(', ');
+
+  return `${elem.kind}(${childrenStr})`;
+}
+
+// =============================================================================
 // MTT Rule Builder (DSL)
 // =============================================================================
 
@@ -307,8 +386,14 @@ function example1_tree_literals() {
       )
     )
   `);
-  console.log('\nFamily tree =>');
+  console.log('\nFamily tree (EAST) =>');
   console.log(JSON.stringify(t3, null, 2));
+
+  console.log('\nRound-trip test (back to syntax sugar):');
+  console.log(prettyPrintTree(t3));
+
+  console.log('\nCompact format:');
+  console.log(prettyPrintTreeCompact(t3));
 }
 
 // =============================================================================
@@ -868,8 +953,16 @@ function example4_declarative_syntax_sugar() {
 
   const output = FamilyTransducer.transform(input);
 
-  console.log('Output:');
-  console.log('-------\n');
+  console.log('Output (Syntax Sugar format):');
+  console.log('------------------------------\n');
+  console.log(prettyPrintTree(output));
+
+  console.log('\n\nOutput (Compact):');
+  console.log('-----------------\n');
+  console.log(prettyPrintTreeCompact(output));
+
+  console.log('\n\nOutput (EAST format):');
+  console.log('---------------------\n');
   console.log(JSON.stringify(output, null, 2));
 
   console.log('\n\nComparison:');
