@@ -7,6 +7,7 @@ TreeP is a functional programming language with Hindley-Milner type inference an
 - **[Macro Tree Transducer Guide](docs/MACRO_TREE_TRANSDUCER.md)** - Comprehensive guide to the integrated macro and transducer system
 - **[Transducer Tutorial](docs/TRANSDUCER_TUTORIAL.md)** - Step-by-step tutorial with practical examples
 - **[MTT Theory](docs/MTT_THEORY.md)** - Formal Macro Tree Transducer theory with parameter-passing examples
+- **[MTT Syntax Sugar](docs/MTT_SYNTAX_SUGAR.md)** - Proposed syntax sugar for tree literals and declarative MTT rules
 - **[Architecture Design](docs/ARCHITECTURE.md)** - System architecture and design patterns
 
 ## Features
@@ -290,7 +291,8 @@ See the `examples/` directory for sample programs:
 - `transducer_example.ts` - Basic tree transformation (def → function, param → argument)
 - `macro_tree_transducer.ts` - Advanced transformations (AST optimization, rewriting, pipelines)
 - `advanced_transducer.ts` - DSL-based rules, fixpoint iteration, constant folding
-- `mtt_examples.ts` - Classic MTT examples with parameter-passing (copy, flatten, depth, path, TreeP integration)
+- `mtt_examples.ts` - Classic MTT examples with parameter-passing (copy, flatten, depth, path, family tree)
+- `mtt_syntax_sugar.ts` - MTT syntax sugar design and proof-of-concept (tree literals, declarative rules)
 
 ## License
 
